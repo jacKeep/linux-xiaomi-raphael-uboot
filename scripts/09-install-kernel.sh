@@ -7,6 +7,62 @@ echo "[$(date +'%Y-%m-%d %H:%M:%S')] [09] 🧠 安装内核"
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] [09]   └─ 内核包目录: ${KERNEL_DEBS_DIR}"
 
+# ───────────────────────── Fedora 分支 ─────────────────────────
+# 内核仅以 .deb 分发，但内核二进制（vmlinuz/modules/firmware）与包格式无关。
+# 用 dpkg-deb -x 提取后放入 rootfs 对应目录，再用 chroot 内的 dracut 生成 initramfs。
+if [[ "$SYSTEM_TYPE" == *"fedora-"* ]]; then
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] [09]   └─ 提取内核 .deb 到临时目录"
+    TMP_KEXTRACT=$(mktemp -d)
+    for deb in ${KERNEL_DEBS_DIR}/*-xiaomi-raphael.deb; do
+        [ -f "$deb" ] || continue
+        dpkg-deb -x "$deb" "$TMP_KEXTRACT"
+    done
+
+    # 复制 vmlinuz -> /boot
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] [09]   └─ 安装 linux-image (vmlinuz)..."
+    cp $TMP_KEXTRACT/boot/vmlinuz-* rootdir/boot/ 2>/dev/null || true
+
+    # 复制 modules -> /lib/modules
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] [09]   └─ 安装内核模块..."
+    mkdir -p rootdir/lib/modules
+    cp -a $TMP_KEXTRACT/lib/modules/* rootdir/lib/modules/ 2>/dev/null || true
+
+    # 复制 firmware -> /lib/firmware
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] [09]   └─ 安装 firmware..."
+    mkdir -p rootdir/lib/firmware
+    cp -a $TMP_KEXTRACT/lib/firmware/* rootdir/lib/firmware/ 2>/dev/null || true
+
+    rm -rf "$TMP_KEXTRACT"
+
+    # 解析内核版本号
+    KVER=$(ls rootdir/lib/modules/ | head -n1)
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] [09]   └─ 内核版本: ${KVER}"
+
+    # 创建 dracut 配置以包含 Qualcomm 固件（对应 Debian 的 initramfs hook）
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] [09]   └─ 添加 dracut 配置..."
+    mkdir -p rootdir/etc/dracut.conf.d
+    FW_ITEMS=""
+    for fw in rootdir/lib/firmware/qcom/a6* \
+              rootdir/lib/firmware/qcom/sm8150/Xiaomi/raphael/a6* \
+              rootdir/lib/firmware/qcom/sm8150/Xiaomi/raphael/ad* \
+              rootdir/lib/firmware/qcom/sm8150/Xiaomi/raphael/cd* \
+              rootdir/lib/firmware/qcom/sm8150/Xiaomi/raphael/ipa*; do
+        [ -e "$fw" ] && FW_ITEMS="$FW_ITEMS ${fw#rootdir}"
+    done
+    cat > rootdir/etc/dracut.conf.d/raphael.conf << EOF
+# Xiaomi raphael 早期启动所需 Qualcomm 固件与驱动
+install_items+="$FW_ITEMS"
+add_drivers+=" ath10k_core ath10k_snoc qcom_q6v5 mss_q6v5 "
+EOF
+
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] [09]   └─ 生成 initramfs (dracut)..."
+    chroot rootdir dracut --kver "$KVER" --force
+
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] [09] ✅ 内核安装完成"
+    exit 0
+fi
+# ───────────────────────── Fedora 分支结束 ─────────────────────────
+
 cp ${KERNEL_DEBS_DIR}/*-xiaomi-raphael.deb rootdir/tmp/
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] [09]   └─ 安装 linux-image..."

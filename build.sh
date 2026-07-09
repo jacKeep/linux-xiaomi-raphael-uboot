@@ -14,6 +14,9 @@ if [[ "$SYSTEM_TYPE" == *"debian-"* ]]; then
 elif [[ "$SYSTEM_TYPE" == *"ubuntu-"* ]]; then
     UBUNTU_VERSION="${UBUNTU_VERSION:?请设置 UBUNTU_VERSION 环境变量}"
     export UBUNTU_VERSION
+elif [[ "$SYSTEM_TYPE" == *"fedora-"* ]]; then
+    FEDORA_VERSION="${FEDORA_VERSION:?请设置 FEDORA_VERSION 环境变量}"
+    export FEDORA_VERSION
 fi
 
 # 解析构建模式参数
@@ -64,13 +67,17 @@ if [ -n "$DEBIAN_VERSION" ]; then
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] Debian 版本:   $DEBIAN_VERSION 🐧"
 elif [ -n "$UBUNTU_VERSION" ]; then
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] Ubuntu 版本:   $UBUNTU_VERSION 🦁"
+elif [ -n "$FEDORA_VERSION" ]; then
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Fedora 版本:   $FEDORA_VERSION 🎩"
 fi
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] 镜像大小:      $IMAGE_SIZE 💾"
 if [ "$IS_DESKTOP" = "true" ]; then
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] 桌面环境:      $DESKTOP_ENV 🎨"
 fi
 BOOTSTRAP_TOOL="${BOOTSTRAP_TOOL:-mmdebstrap}"
-if [ "$BOOTSTRAP_TOOL" = "debootstrap" ]; then
+if [[ "$SYSTEM_TYPE" == *"fedora-"* ]]; then
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] 构建模式:      dnf installroot 🎩"
+elif [ "$BOOTSTRAP_TOOL" = "debootstrap" ]; then
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] 构建模式:      debootstrap 🛠️"
 else
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] 构建模式:      mmdebstrap 📦"

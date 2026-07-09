@@ -14,7 +14,7 @@ on:
       system_types:
         description: '系统类型 (用逗号分隔多个值，如: debian-server,debian-gnome)'
         required: false
-        default: 'debian-server,debian-gnome,debian-phosh,ubuntu-server,ubuntu-gnome,ubuntu-phosh'
+        default: 'debian-server,debian-gnome,debian-phosh,ubuntu-server,ubuntu-gnome,ubuntu-phosh,fedora-server,fedora-kde'
         type: string
       kernel_versions:
         description: '内核版本 (默认7.1)'
@@ -40,6 +40,11 @@ on:
         description: 'Ubuntu 版本 (用逗号分隔多个值，如: noble,resolute)'
         required: false
         default: 'resolute'
+        type: string
+      fedora_versions:
+        description: 'Fedora 版本 (用逗号分隔多个值，如: 43,44)'
+        required: false
+        default: '44'
         type: string
       kernel_repository:
         description: '内核包仓库'
@@ -93,29 +98,37 @@ jobs:
           DESKTOP_ENV="${{ github.event.inputs.desktop_environments }}"
           DEB_VERS="${{ github.event.inputs.debian_versions }}"
           UBU_VERS="${{ github.event.inputs.ubuntu_versions }}"
-          
+          FED_VERS="${{ github.event.inputs.fedora_versions }}"
+
           if [ "$BUILD_MODE" = "single" ]; then
             # 单模式：取每个输入的第一个值
             SYS_TYPE=$(echo "$SYS_TYPES" | cut -d',' -f1)
             KERN_VER=$(echo "$KERN_VERS" | cut -d',' -f1)
             TOOL=$(echo "$BOOT_TOOLS" | cut -d',' -f1)
-            
+
             if [[ "$SYS_TYPE" == debian-* ]]; then
               DEB_VER=$(echo "$DEB_VERS" | cut -d',' -f1)
               UBU_VER=""
+              FED_VER=""
               OS_VER="$DEB_VER"
+            elif [[ "$SYS_TYPE" == fedora-* ]]; then
+              DEB_VER=""
+              UBU_VER=""
+              FED_VER=$(echo "$FED_VERS" | cut -d',' -f1)
+              OS_VER="$FED_VER"
             else
               DEB_VER=""
               UBU_VER=$(echo "$UBU_VERS" | cut -d',' -f1)
+              FED_VER=""
               OS_VER="$UBU_VER"
             fi
-            
+
             # 输出单个构建的信息供 release job 使用
             echo "single_system_type=${SYS_TYPE}" >> $GITHUB_OUTPUT
             echo "single_kernel_version=${KERN_VER}" >> $GITHUB_OUTPUT
             echo "single_os_version=${OS_VER}" >> $GITHUB_OUTPUT
-            
-            MATRIX="[{"system_type":"$SYS_TYPE","kernel_version":"$KERN_VER","bootstrap_tool":"$TOOL","debian_version":"$DEB_VER","ubuntu_version":"$UBU_VER","desktop_env":"$DESKTOP_ENV"}]"
+
+            MATRIX="[{"system_type":"$SYS_TYPE","kernel_version":"$KERN_VER","bootstrap_tool":"$TOOL","debian_version":"$DEB_VER","ubuntu_version":"$UBU_VER","fedora_version":"$FED_VER","desktop_env":"$DESKTOP_ENV"}]"
           else
             # 并行模式：使用纯 bash 生成 JSON
             MATRIX="["
@@ -127,7 +140,8 @@ jobs:
             IFS=',' read -ra TOOL_ARRAY <<< "$BOOT_TOOLS"
             IFS=',' read -ra DEB_ARRAY <<< "$DEB_VERS"
             IFS=',' read -ra UBU_ARRAY <<< "$UBU_VERS"
-            
+            IFS=',' read -ra FED_ARRAY <<< "$FED_VERS"
+
             # 生成 Debian 组合
             for sys in "${SYS_ARRAY[@]}"; do
               if [[ "$sys" == debian-* ]]; then
@@ -139,13 +153,13 @@ jobs:
                       else
                         MATRIX="${MATRIX},"
                       fi
-                      MATRIX="${MATRIX}{\"system_type\":\"$sys\",\"kernel_version\":\"$kern\",\"bootstrap_tool\":\"$tool\",\"debian_version\":\"$deb_ver\",\"ubuntu_version\":\"\",\"desktop_env\":\"$DESKTOP_ENV\"}"
+                      MATRIX="${MATRIX}{\"system_type\":\"$sys\",\"kernel_version\":\"$kern\",\"bootstrap_tool\":\"$tool\",\"debian_version\":\"$deb_ver\",\"ubuntu_version\":\"\",\"fedora_version\":\"\",\"desktop_env\":\"$DESKTOP_ENV\"}"
                     done
                   done
                 done
               fi
             done
-            
+
             # 生成 Ubuntu 组合
             for sys in "${SYS_ARRAY[@]}"; do
               if [[ "$sys" == ubuntu-* ]]; then
@@ -157,13 +171,31 @@ jobs:
                       else
                         MATRIX="${MATRIX},"
                       fi
-                      MATRIX="${MATRIX}{\"system_type\":\"$sys\",\"kernel_version\":\"$kern\",\"bootstrap_tool\":\"$tool\",\"debian_version\":\"\",\"ubuntu_version\":\"$ubu_ver\",\"desktop_env\":\"$DESKTOP_ENV\"}"
+                      MATRIX="${MATRIX}{\"system_type\":\"$sys\",\"kernel_version\":\"$kern\",\"bootstrap_tool\":\"$tool\",\"debian_version\":\"\",\"ubuntu_version\":\"$ubu_ver\",\"fedora_version\":\"\",\"desktop_env\":\"$DESKTOP_ENV\"}"
                     done
                   done
                 done
               fi
             done
-            
+
+            # 生成 Fedora 组合
+            for sys in "${SYS_ARRAY[@]}"; do
+              if [[ "$sys" == fedora-* ]]; then
+                for kern in "${KERN_ARRAY[@]}"; do
+                  for tool in "${TOOL_ARRAY[@]}"; do
+                    for fed_ver in "${FED_ARRAY[@]}"; do
+                      if [ "$FIRST_ITEM" = true ]; then
+                        FIRST_ITEM=false
+                      else
+                        MATRIX="${MATRIX},"
+                      fi
+                      MATRIX="${MATRIX}{\"system_type\":\"$sys\",\"kernel_version\":\"$kern\",\"bootstrap_tool\":\"$tool\",\"debian_version\":\"\",\"ubuntu_version\":\"\",\"fedora_version\":\"$fed_ver\",\"desktop_env\":\"$DESKTOP_ENV\"}"
+                    done
+                  done
+                done
+              fi
+            done
+
             MATRIX="${MATRIX}]"
           fi
           
@@ -186,6 +218,7 @@ jobs:
       DESKTOP_ENV: ${{ matrix.desktop_env }}
       DEBIAN_VERSION: ${{ matrix.debian_version }}
       UBUNTU_VERSION: ${{ matrix.ubuntu_version }}
+      FEDORA_VERSION: ${{ matrix.fedora_version }}
       KERNEL_REPO: ${{ github.event.inputs.kernel_repository || 'GengWei1997/linux-xiaomi-raphael-uboot' }}
 
     steps:
@@ -194,9 +227,14 @@ jobs:
 
       - name: 安装构建工具
         run: |
-          echo "[$(date +'%Y-%m-%d %H:%M:%S')] 检查并安装构建工具: ${{ env.BOOTSTRAP_TOOL }}"
-          
-          if [ "${{ env.BOOTSTRAP_TOOL }}" = "mmdebstrap" ]; then
+          echo "[$(date +'%Y-%m-%d %H:%M:%S')] 检查并安装构建工具: ${{ env.BOOTSTRAP_TOOL }} (system: ${{ env.SYSTEM_TYPE }})"
+
+          if [[ "${{ env.SYSTEM_TYPE }}" == fedora-* ]]; then
+            echo "[$(date +'%Y-%m-%d %H:%M:%S')]   安装 dnf/rpm/dpkg-dev (用于 Fedora installroot 引导与 .deb 提取)..."
+            sudo apt-get update
+            sudo apt-get install -y dnf rpm dpkg-dev
+            echo "[$(date +'%Y-%m-%d %H:%M:%S')]   dnf/rpm/dpkg-dev 安装完成"
+          elif [ "${{ env.BOOTSTRAP_TOOL }}" = "mmdebstrap" ]; then
             if ! command -v mmdebstrap &> /dev/null; then
               echo "[$(date +'%Y-%m-%d %H:%M:%S')]   安装 mmdebstrap 和依赖..."
               sudo apt-get update
@@ -271,13 +309,13 @@ jobs:
 
           chmod +x build.sh
 
-          sudo BOOTSTRAP_TOOL="${{ env.BOOTSTRAP_TOOL }}" DEBIAN_VERSION="${{ env.DEBIAN_VERSION }}" UBUNTU_VERSION="${{ env.UBUNTU_VERSION }}" ./build.sh "${{ env.SYSTEM_TYPE }}" "${{ env.KERNEL_VERSION }}" "${{ env.DESKTOP_ENV }}" "${{ env.DEBIAN_VERSION || env.UBUNTU_VERSION }}"
+          sudo BOOTSTRAP_TOOL="${{ env.BOOTSTRAP_TOOL }}" DEBIAN_VERSION="${{ env.DEBIAN_VERSION }}" UBUNTU_VERSION="${{ env.UBUNTU_VERSION }}" FEDORA_VERSION="${{ env.FEDORA_VERSION }}" ./build.sh "${{ env.SYSTEM_TYPE }}" "${{ env.KERNEL_VERSION }}" "${{ env.DESKTOP_ENV }}" "${{ env.DEBIAN_VERSION || env.UBUNTU_VERSION || env.FEDORA_VERSION }}"
 
       - name: 生成产物文件名和校验和
         id: artifacts
         run: |
           # 构建产物标识名
-          OS_VER="${{ env.DEBIAN_VERSION || env.UBUNTU_VERSION }}"
+          OS_VER="${{ env.DEBIAN_VERSION || env.UBUNTU_VERSION || env.FEDORA_VERSION }}"
           FILENAME="rootfs-${{ env.SYSTEM_TYPE }}-${{ env.KERNEL_VERSION }}-${OS_VER}"
           [[ "${{ env.SYSTEM_TYPE }}" == *"phosh"* ]] && FILENAME="${FILENAME}-${{ env.DESKTOP_ENV }}"
           
@@ -371,10 +409,23 @@ jobs:
               
               # 解析文件名信息
               # 格式: rootfs-{system_type}-{kernel_version}-{os_version}[-{desktop_env}].7z
-              IFS='-' read -ra PARTS <<< "${filename%.7z}"
-              SYSTEM_TYPE="${PARTS[1]}"
-              KERNEL_VER="${PARTS[2]}"
-              OS_VER="${PARTS[3]}"
+              # system_type 可能含连字符（如 fedora-kde），kernel_version 始终以数字开头
+              REST="${filename%.7z}"
+              REST="${REST#rootfs-}"
+              _PARTS=()
+              IFS='-' read -ra _PARTS <<< "$REST"
+              _idx=0
+              _SYS_PARTS=()
+              while [ "$_idx" -lt "${#_PARTS[@]}" ]; do
+                  if [[ "${_PARTS[$_idx]}" =~ ^[0-9] ]]; then
+                      break
+                  fi
+                  _SYS_PARTS+=("${_PARTS[$_idx]}")
+                  _idx=$((_idx + 1))
+              done
+              SYSTEM_TYPE="$(IFS=-; echo "${_SYS_PARTS[*]}")"
+              KERNEL_VER="${_PARTS[$_idx]}"
+              OS_VER="${_PARTS[$((_idx + 1))]}"
               
               # 获取校验和
               shafile="${file%.7z}.sha256"

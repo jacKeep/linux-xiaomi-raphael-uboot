@@ -1,10 +1,10 @@
 <div align="center">
 
-# <img src="https://img.shields.io/badge/Device-Xiaomi_Raphael-FF6900?style=for-the-badge&logo=android&logoColor=white" alt="Device"/> <img src="https://img.shields.io/badge/Linux-Ubuntu|Debian-E95420?style=for-the-badge&logo=linux&logoColor=white" alt="Linux"/>
+# <img src="https://img.shields.io/badge/Device-Xiaomi_Raphael-FF6900?style=for-the-badge&logo=android&logoColor=white" alt="Device"/> <img src="https://img.shields.io/badge/Linux-Fedora|Ubuntu|Debian-E95420?style=for-the-badge&logo=linux&logoColor=white" alt="Linux"/>
 
 # 📱 小米 Raphael Linux 镜像构建项目
 
-### Redmi K20 Pro · 一键构建 Debian / Ubuntu 系统镜像
+### Redmi K20 Pro · 一键构建 Fedora / Debian / Ubuntu 系统镜像
 
 [![Build](https://img.shields.io/github/actions/workflow/status/GengWei1997/linux-xiaomi-raphael-uboot/build-system.yml?style=flat-square&label=Build&logo=github-actions&logoColor=white)](https://github.com/GengWei1997/linux-xiaomi-raphael-uboot/actions)
 [![Release](https://img.shields.io/github/v/release/GengWei1997/linux-xiaomi-raphael-uboot?style=flat-square&label=Release&logo=github&logoColor=white)](https://github.com/GengWei1997/linux-xiaomi-raphael-uboot/releases)
@@ -16,7 +16,7 @@
 
 ## ✨ 项目简介
 
-本项目为 **小米 Raphael（Redmi K20 Pro）** 专属 Linux 镜像构建方案，提供完整的 Debian / Ubuntu 系统镜像构建脚本与 GitHub Actions 自动化工作流。支持多内核版本、多桌面环境，开箱即用。
+本项目为 **小米 Raphael（Redmi K20 Pro）** 专属 Linux 镜像构建方案，提供完整的 Fedora / Debian / Ubuntu 系统镜像构建脚本与 GitHub Actions 自动化工作流。支持多内核版本、多桌面环境，开箱即用。
 
 ## 📋 支持系统类型
 
@@ -28,6 +28,8 @@
 | `ubuntu-server` | 无（纯命令行） | Ubuntu resolute | 3G |
 | `ubuntu-gnome` | GNOME | Ubuntu resolute | 6G |
 | `ubuntu-phosh` | Phosh 移动端桌面 | Ubuntu resolute | 6G |
+| `fedora-server` | 无（纯命令行） | Fedora 44 | 3G |
+| `fedora-kde` | KDE Plasma（触摸适配） | Fedora 44 | 6G |
 
 ## 🖥️ 设备硬件适配
 
@@ -59,10 +61,11 @@
 | 参数 | 说明 | 默认值 |
 |:---:|:---|:---:|
 | 构建模式 | `parallel` 并行构建 / `single` 单独构建 | `parallel` |
-| 系统类型 | 支持逗号分隔，留空则全量构建 | 全部 |
+| 系统类型 | 支持逗号分隔，留空则全量构建（含 `fedora-server`、`fedora-kde`） | 全部 |
 | 内核版本 | `6.18` 或 `7.0` | `7.0` |
-| 构建工具 | `mmdebstrap` / `debootstrap` | `mmdebstrap` |
+| 构建工具 | `mmdebstrap` / `debootstrap`（Fedora 自动用 dnf，忽略此项） | `mmdebstrap` |
 | Phosh 变体 | 仅 Phosh 镜像生效 | `phosh-core` |
+| Fedora 版本 | 仅 Fedora 镜像生效 | `44` |
 
 4. 等待构建完成，镜像自动发布至 Releases
 
@@ -85,7 +88,8 @@
 
 ### 🎨 桌面版专属
 
-- GNOME / Phosh 双桌面环境可选，适配桌面、移动两种使用场景
+- GNOME / Phosh / KDE Plasma 三种桌面环境可选，适配桌面、移动两种使用场景
+- `fedora-kde` 预装 maliit-keyboard 屏幕键盘并启用触摸适配，适合手机触屏使用
 
 ### 🖥️ 服务器版专属
 
@@ -227,7 +231,7 @@ fastboot reboot
 </table>
 
 <p align="center">
-  <i>Linux 内核官方开发团队 · Debian / Ubuntu 开源社区 · Phosh 桌面开发团队 · 以及所有开源贡献者</i>
+  <i>Linux 内核官方开发团队 · Fedora / Debian / Ubuntu 开源社区 · KDE / Phosh 桌面开发团队 · 以及所有开源贡献者</i>
 </p>
 
 ---
