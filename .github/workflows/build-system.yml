@@ -349,6 +349,16 @@ jobs:
       - name: 清理临时文件
         if: always()
         run: |
+          # 先卸载所有 bind-mount / loop 挂载，再 rm -rf。
+          # 否则构建中途失败时（18-finalize 的 umount 未执行），rm -rf rootdir 会递归进入
+          # bind-mount 的 rootdir/dev，删除宿主设备节点（如 /dev/null），破坏 runner 环境。
+          # 顺序：从最深的子挂载开始，最后 umount rootdir 本身（loop 挂载的 rootfs.img）。
+          sudo umount rootdir/dev/pts 2>/dev/null || true
+          sudo umount rootdir/dev 2>/dev/null || true
+          sudo umount rootdir/proc 2>/dev/null || true
+          sudo umount rootdir/sys 2>/dev/null || true
+          sudo umount rootdir/boot 2>/dev/null || true
+          sudo umount rootdir 2>/dev/null || true
           sudo rm -f alsa-xiaomi-raphael.deb 2>/dev/null || true
           sudo rm -rf rootdir 2>/dev/null || true
           rm -rf xiaomi-raphael-debs_* 2>/dev/null || true

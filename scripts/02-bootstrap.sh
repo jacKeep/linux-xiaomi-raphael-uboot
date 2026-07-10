@@ -17,11 +17,31 @@ if [[ "$SYSTEM_TYPE" == *"fedora-"* ]]; then
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] [02]   └─ 开始 bootstrap (这可能需要几分钟...)"
     # dnf 的 --installroot 要求绝对路径
     ROOTDIR="$(pwd)/rootdir"
+
+    # dnf installroot 安装包时会运行 scriptlet（如 systemd-tmpfiles），需要 /proc /sys 才能正常工作，
+    # 否则会产生大量 "/proc/ is not mounted" 警告。这里临时 bind-mount /proc /sys（跳过 /dev，避免
+    # tmpfiles 操作宿主 /dev 设备节点），dnf 结束后立即 umount，防止 03-mount-dev.sh 重复挂载导致堆叠。
+    mkdir -p "${ROOTDIR}/proc" "${ROOTDIR}/sys"
+
+    _fedora_umount_pseudofs() {
+        umount "${ROOTDIR}/sys" 2>/dev/null || true
+        umount "${ROOTDIR}/proc" 2>/dev/null || true
+    }
+    # 先注册 trap 再挂载：若某个 mount 失败（set -e 触发退出），trap 仍能清理已挂载项，避免泄漏。
+    trap _fedora_umount_pseudofs EXIT
+
+    mount --bind /proc "${ROOTDIR}/proc"
+    mount --bind /sys "${ROOTDIR}/sys"
+
     dnf --installroot="${ROOTDIR}" --releasever="${FEDORA_VERSION}" \
         --setopt=install_weak_deps=False --nogpgcheck \
         --repofrompath=base,"${FEDORA_BASE_MIRROR}" \
         --repofrompath=updates,"${FEDORA_UPDATES_MIRROR}" \
         install -y @core
+
+    # dnf 成功后主动 umount 并解除 trap，避免与后续 03-mount-dev.sh 的挂载堆叠
+    _fedora_umount_pseudofs
+    trap - EXIT
 elif [[ "$SYSTEM_TYPE" == *"debian-"* ]]; then
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] [02]   └─ 使用 $BOOTSTRAP_TOOL 构建 Debian $DEBIAN_VERSION 🐧"
     OS_VERSION="$DEBIAN_VERSION"

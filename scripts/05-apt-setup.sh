@@ -10,6 +10,9 @@ if [[ "$SYSTEM_TYPE" == *"fedora-"* ]]; then
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] [05] 📡 配置 Fedora $FEDORA_VERSION dnf 源并更新缓存"
 
     mkdir -p rootdir/etc/yum.repos.d
+    # 清除 @core 安装带入的默认仓库文件（fedora-updates.repo、fedora-cisco-openh264.repo 等），
+    # 它们使用 metalink 且 $releasever 在 installroot 中无法解析，会导致 makecache 404 失败。
+    rm -f rootdir/etc/yum.repos.d/*.repo
     cat > rootdir/etc/yum.repos.d/fedora.repo << EOF
 [fedora]
 name=Fedora ${FEDORA_VERSION} - Base
