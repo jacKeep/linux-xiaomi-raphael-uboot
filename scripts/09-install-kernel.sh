@@ -49,11 +49,18 @@ if [[ "$SYSTEM_TYPE" == *"fedora-"* ]]; then
               rootdir/lib/firmware/qcom/sm8150/Xiaomi/raphael/ipa*; do
         [ -e "$fw" ] && FW_ITEMS="$FW_ITEMS ${fw#rootdir}"
     done
-    cat > rootdir/etc/dracut.conf.d/raphael.conf << EOF
-# Xiaomi raphael 早期启动所需 Qualcomm 固件与驱动
-install_items+="$FW_ITEMS"
-add_drivers+=" ath10k_core ath10k_snoc qcom_q6v5 mss_q6v5 "
-EOF
+    # 生成 dracut 配置。注意：
+    # - 仅当 FW_ITEMS 非空时才写 install_items+=，避免空值触发
+    #   "<values> should have surrounding white spaces" 警告。
+    # - mss_q6v5 在主线内核中不存在，正确模块名为 qcom_q6v5_mss
+    #   （drivers/remoteproc/qcom_q6v5_mss.c）。
+    {
+        echo "# Xiaomi raphael 早期启动所需 Qualcomm 固件与驱动"
+        if [ -n "$FW_ITEMS" ]; then
+            echo "install_items+=\"${FW_ITEMS} \""
+        fi
+        echo "add_drivers+=\" ath10k_core ath10k_snoc qcom_q6v5 qcom_q6v5_mss \""
+    } > rootdir/etc/dracut.conf.d/raphael.conf
 
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] [09]   └─ 生成 initramfs (dracut)..."
     chroot rootdir dracut --kver "$KVER" --force

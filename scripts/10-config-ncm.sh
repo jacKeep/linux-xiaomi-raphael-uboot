@@ -6,6 +6,7 @@ echo "[$(date +'%Y-%m-%d %H:%M:%S')] [10] 📱 配置 USB NCM 网络"
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] [10]   └─ 创建 dnsmasq 配置"
 
 # 配置 NCM
+mkdir -p rootdir/etc/dnsmasq.d
 cat > rootdir/etc/dnsmasq.d/usb-ncm.conf << 'EOF'
 interface=usb0
 bind-dynamic

@@ -20,7 +20,7 @@ if [[ "$SYSTEM_TYPE" == *"fedora-"* ]]; then
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] [06]   └─ 更新系统包 (dnf)..."
     chroot rootdir dnf -y upgrade
 
-    BASE_PACKAGES="bash-completion sudo nano openssh-server NetworkManager chrony curl wget tzdata iproute nftables dracut filesystem glibc-langpack-en google-noto-sans-cjk-fonts wqy-microhei-fonts zram-generator"
+    BASE_PACKAGES="bash-completion sudo nano openssh-server NetworkManager chrony curl wget tzdata iproute nftables dnsmasq dracut filesystem glibc-langpack-en google-noto-sans-cjk-fonts wqy-microhei-fonts zram-generator"
 
     DESKTOP_PACKAGES=""
     if [[ "$SYSTEM_TYPE" != *"server"* ]]; then
