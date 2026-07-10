@@ -15,7 +15,9 @@ echo "[$(date +'%Y-%m-%d %H:%M:%S')] [02] 🚀 安装基础系统"
 if [[ "$SYSTEM_TYPE" == *"fedora-"* ]]; then
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] [02]   └─ 使用 dnf installroot 构建 Fedora $FEDORA_VERSION 🎩"
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] [02]   └─ 开始 bootstrap (这可能需要几分钟...)"
-    dnf --installroot=rootdir --releasever="${FEDORA_VERSION}" \
+    # dnf 的 --installroot 要求绝对路径
+    ROOTDIR="$(pwd)/rootdir"
+    dnf --installroot="${ROOTDIR}" --releasever="${FEDORA_VERSION}" \
         --setopt=install_weak_deps=False --nogpgcheck \
         --repofrompath=base,"${FEDORA_BASE_MIRROR}" \
         --repofrompath=updates,"${FEDORA_UPDATES_MIRROR}" \
